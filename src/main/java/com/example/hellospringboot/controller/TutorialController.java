@@ -1,10 +1,16 @@
 package com.example.hellospringboot.controller;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,6 +47,7 @@ public class TutorialController {
 	// name = "title", defaultValue = "default value constant
 	public ResponseEntity<List<Tutorial>> getAllTutorials(@RequestParam(required = false) String title) {
 		try {
+
 			List<Tutorial> tutorials = new ArrayList<Tutorial>();
 			if (title == null) {
 				tutorialRepository.findAll().forEach(tutorials::add);
@@ -113,6 +120,38 @@ public class TutorialController {
 			return new ResponseEntity<List<Tutorial>>(tutorials, HttpStatus.OK);
 		} catch (Exception e) {
 			return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/tutorials_pagination_sorting")
+	public ResponseEntity<Map<String, Object>> getAllTutorialsPag(@RequestParam(defaultValue = "0") Integer pageNo,
+			@RequestParam(defaultValue = "2") Integer pageSize, @RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "asc") String sortOrder, @RequestParam(required = false) String title) {
+		try {
+//		    Sort sort = Sort.by(sortBy);	
+//		    return new ResponseEntity<List<Tutorial>>(tutorialRepository.findAll(sortOrder == "desc" ? sort.descending() : sort.ascending()), HttpStatus.OK);
+
+			Sort sort = Sort.by(sortBy);
+			Pageable paging = PageRequest.of(pageNo, pageSize,
+					sortOrder == "desc" ? sort.descending() : sort.ascending());
+			
+			Page<Tutorial> pageResult = title == null ? tutorialRepository.findAll(paging)
+					: tutorialRepository.findByTitleContaining(title, paging);
+//			return new ResponseEntity<List<Tutorial>>(pageResult.getContent(), HttpStatus.OK);
+
+			
+			//customize response object
+			Map<String, Object> response = new HashMap<String, Object>();
+			
+			response.put("tutorials", pageResult.getContent());
+			response.put("count", pageResult.getTotalElements());
+			response.put("totalPages", pageResult.getTotalPages());
+
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+
 		}
 	}
 }
